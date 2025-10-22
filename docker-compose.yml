@@ -1,0 +1,56 @@
+services:
+  vllm-qwen3:
+    image: my-vllm-rocm7-built:latest
+    container_name: robai-qwen3
+    network_mode: "host"
+    restart: unless-stopped
+
+    # GPU and device access
+    privileged: true
+    group_add:
+      - video
+    ipc: host
+    shm_size: 32gb
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    devices:
+      - /dev/kfd
+      - /dev/dri
+
+    # Environment variables
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=12.0.1
+      - TORCH_COMPILE_DISABLE=1
+      - HIP_FORCE_DEV_KERNARG=1
+      - VLLM_SLEEP_WHEN_IDLE=1
+
+    # Model volume mount
+    volumes:
+      - /mnt/raid/Models/GPTQ/Qwen3-30B-A3B-Instruct-2507-GPTQ-Int8:/app/models
+
+    # vLLM server command
+    command: >-
+      vllm serve /app/models
+      --tensor-parallel-size 2
+      --quantization gptq
+      --enforce-eager
+      --enable-auto-tool-choice
+      --tool-call-parser hermes
+      --max-num-seqs 8
+      --max-model-len 240000
+      --max-num-batched-tokens 2048
+      --enable-chunked-prefill
+      --gpu-memory-utilization 0.91
+      --host 0.0.0.0
+      --port 8078
+      --served-model-name Qwen3-30B
+      --override-generation-config '{"temperature": 0.7, "top_p": 0.8, "top_k": 20}'
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8078/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
