@@ -38,7 +38,7 @@ services:
       --enforce-eager
       --enable-auto-tool-choice
       --tool-call-parser hermes
-      --max-num-seqs 8
+      --max-num-seqs 6
       --max-model-len 240000
       --max-num-batched-tokens 2048
       --enable-chunked-prefill
